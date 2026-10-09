@@ -1,0 +1,233 @@
+-- PHE HUB | BLOX FRUITS
+-- Premium key + UI + Fruit Finder + Fruit ESP
+-- Note: Auto Farm and Auto Quest are UI toggles only.
+
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+getgenv().Premium = true
+getgenv().Key = getgenv().Key or ""
+
+local VALID_KEYS = {
+    ["Phedepzai367"] = true,
+}
+
+if not VALID_KEYS[getgenv().Key] then
+    warn("[PHE HUB] Invalid Premium Key")
+    return
+end
+
+local function New(class, props, parent)
+    local obj = Instance.new(class)
+    for k, v in pairs(props) do
+        obj[k] = v
+    end
+    obj.Parent = parent
+    return obj
+end
+
+local old = PlayerGui:FindFirstChild("PHE_HUB")
+if old then old:Destroy() end
+
+local gui = New("ScreenGui", {
+    Name = "PHE_HUB",
+    ResetOnSpawn = false,
+}, PlayerGui)
+
+local main = New("Frame", {
+    Size = UDim2.fromOffset(320, 390),
+    Position = UDim2.new(0.5, -160, 0.5, -195),
+    BackgroundColor3 = Color3.fromRGB(25, 23, 38),
+    BorderSizePixel = 0,
+}, gui)
+
+New("UICorner", {
+    CornerRadius = UDim.new(0, 12)
+}, main)
+
+New("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 45),
+    BackgroundColor3 = Color3.fromRGB(125, 65, 220),
+    Text = "PHE HUB | BLOX FRUITS",
+    TextColor3 = Color3.new(1, 1, 1),
+    Font = Enum.Font.GothamBold,
+    TextSize = 16,
+}, main)
+
+local info = New("TextLabel", {
+    Position = UDim2.fromOffset(10, 50),
+    Size = UDim2.new(1, -20, 0, 40),
+    BackgroundTransparency = 1,
+    Text = "Premium activated | " .. Player.Name,
+    TextColor3 = Color3.new(1, 1, 1),
+    Font = Enum.Font.Gotham,
+    TextSize = 12,
+}, main)
+
+local content = New("ScrollingFrame", {
+    Position = UDim2.fromOffset(10, 95),
+    Size = UDim2.new(1, -20, 1, -105),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    CanvasSize = UDim2.new(),
+}, main)
+
+New("UIListLayout", {
+    Padding = UDim.new(0, 7),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+}, content)
+
+local settings = {
+    Speed = 16,
+    Jump = 50,
+    AutoFarm = false,
+    AutoQuest = false,
+    FruitESP = false,
+}
+
+local function Character()
+    local c = Player.Character
+    if not c then return end
+
+    return c,
+        c:FindFirstChildOfClass("Humanoid"),
+        c:FindFirstChild("HumanoidRootPart")
+end
+
+local function AddButton(text, callback)
+    local b = New("TextButton", {
+        Size = UDim2.new(1, -5, 0, 36),
+        BackgroundColor3 = Color3.fromRGB(55, 45, 77),
+        Text = text,
+        TextColor3 = Color3.new(1, 1, 1),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 12,
+    }, content)
+
+    New("UICorner", {
+        CornerRadius = UDim.new(0, 7)
+    }, b)
+
+    b.Activated:Connect(function()
+        callback(b)
+    end)
+
+    return b
+end
+
+AddButton("WalkSpeed: 16 / 32", function(b)
+    settings.Speed = settings.Speed == 16 and 32 or 16
+
+    local _, humanoid = Character()
+    if humanoid then
+        humanoid.WalkSpeed = settings.Speed
+    end
+
+    b.Text = "WalkSpeed: " .. settings.Speed
+end)
+
+AddButton("JumpPower: 50 / 75", function(b)
+    settings.Jump = settings.Jump == 50 and 75 or 50
+
+    local _, humanoid = Character()
+    if humanoid then
+        humanoid.UseJumpPower = true
+        humanoid.JumpPower = settings.Jump
+    end
+
+    b.Text = "JumpPower: " .. settings.Jump
+end)
+
+AddButton("Find Nearest Tool", function()
+    local _, _, root = Character()
+    if not root then
+        info.Text = "Character unavailable"
+        return
+    end
+
+    local nearest, bestDistance
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool") then
+            local part = obj:FindFirstChild("Handle")
+                or obj:FindFirstChildWhichIsA("BasePart")
+
+            if part then
+                local distance =
+                    (part.Position - root.Position).Magnitude
+
+                if not bestDistance or distance < bestDistance then
+                    nearest = obj
+                    bestDistance = distance
+                end
+            end
+        end
+    end
+
+    info.Text = nearest and string.format(
+        "%s | %.0f studs",
+        nearest.Name,
+        bestDistance
+    ) or "No tools found"
+end)
+
+local highlights = {}
+
+local function ClearESP()
+    for _, h in ipairs(highlights) do
+        h:Destroy()
+    end
+    table.clear(highlights)
+end
+
+AddButton("Fruit ESP: ON / OFF", function(b)
+    settings.FruitESP = not settings.FruitESP
+    ClearESP()
+
+    if settings.FruitESP then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Tool")
+                and obj:FindFirstChildWhichIsA("BasePart") then
+
+                local h = Instance.new("Highlight")
+                h.Adornee = obj
+                h.FillColor = Color3.fromRGB(255, 190, 40)
+                h.OutlineColor = Color3.new(1, 1, 1)
+                h.Parent = gui
+
+                table.insert(highlights, h)
+            end
+        end
+    end
+
+    b.Text = "Fruit ESP: " ..
+        (settings.FruitESP and "ON" or "OFF")
+end)
+
+AddButton("Auto Quest: ON / OFF", function(b)
+    settings.AutoQuest = not settings.AutoQuest
+    b.Text = "Auto Quest: " ..
+        (settings.AutoQuest and "ON" or "OFF")
+
+    info.Text = "Quest status toggle only"
+end)
+
+AddButton("Auto Farm Level: ON / OFF", function(b)
+    settings.AutoFarm = not settings.AutoFarm
+    b.Text = "Auto Farm: " ..
+        (settings.AutoFarm and "ON" or "OFF")
+
+    info.Text = "Farm status toggle only"
+end)
+
+AddButton("Close PHE HUB", function()
+    ClearESP()
+    gui:Destroy()
+end)
+
+print("[PHE HUB] Loaded successfully")
